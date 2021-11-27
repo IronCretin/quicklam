@@ -1,0 +1,67 @@
+use std::rc::Rc;
+
+use lalrpop_util::ParseError;
+
+use crate::term::Term;
+use crate::error::{Error, ErrorKind};
+
+
+grammar(vars: &mut Vec<&'input str>);
+
+extern {
+    type Error = Error;
+}
+
+pub Term: Rc<Term<'input>> = {
+    <l:LTerm*> <r:RTerm> => l
+        .into_iter()
+        .chain(Some(r))
+        .reduce(|l, r| Rc::new(Term::App(l, r)))
+        .unwrap()
+}
+
+Name = r"[^\\λ.()#\s]";
+
+/// Term that can appear in the left of an application expression.
+LTerm: Rc<Term<'input>> = {
+    "(" <Term> ")",
+    <start:@L> <num:r"#\d+"> <end:@R> =>? num[1..]
+        .parse()
+        .map(|n| Rc::new(Term::Var(n)))
+        .map_err(|e| ParseError::User {
+            error: Error {
+                start: start+1,
+                kind: ErrorKind::BadNum(e),
+                end,
+            },
+        }),
+    <start:@L> <name:Name> <end:@R> =>? vars
+        .iter()
+        .rev()
+        .position(|&v| v == name)
+        .map(|n| {
+            Rc::new(Term::Var(n))
+        })
+        .ok_or_else(|| ParseError::User {
+            error: Error {
+                start: start,
+                kind: ErrorKind::BadVar(name.to_string()),
+                end,
+            },
+        }),
+}
+/// Term that can appear at the end of an application expression.
+RTerm: Rc<Term<'input>> = {
+    LTerm,
+    r"[λ\\]" <args:Arg+> "." <body:Term> => {
+        vars.truncate(vars.len() - args.len());
+        args.into_iter().rev().fold(body, |b, a| Rc::new(Term::Lam(a, b)))
+    },
+}
+
+Arg: &'input str = {
+    Name => {
+        vars.push(<>);
+        <>
+    },
+}
