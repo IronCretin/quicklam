@@ -1,5 +1,3 @@
-use std::borrow::Cow;
-
 use ariadne::{Color, Label, Report, ReportKind, Source};
 use lalrpop_util::ParseError;
 use rustyline::{error::ReadlineError, Editor};
@@ -21,10 +19,10 @@ fn main() {
                 if line.is_empty() {
                     continue;
                 }
-                rl.add_history_entry(line.as_str());
                 let term = loop {
                     match parse(line.as_str()) {
                         Ok(term) => {
+                            rl.add_history_entry(line.as_str());
                             break term;
                         }
                         Err(ParseError::UnrecognizedEOF { .. }) => match rl.readline("... ") {
@@ -34,6 +32,7 @@ fn main() {
                             }
                             Err(ReadlineError::Interrupted) => {
                                 println!("^C");
+                                rl.add_history_entry(line.as_str());
                                 continue 'repl;
                             }
                             Err(ReadlineError::Eof) => {
