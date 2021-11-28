@@ -20,7 +20,7 @@ pub Term: Rc<Term<'input>> = {
         .unwrap()
 }
 
-Name = r"[^\\λ.()#\s]+";
+Name = r"[^\\λ.()#;\s]+";
 
 /// Term that can appear in the left of an application expression.
 LTerm: Rc<Term<'input>> = {
@@ -60,11 +60,22 @@ RTerm: Rc<Term<'input>> = {
         vars.truncate(vars.len() - args.len());
         args.into_iter().rev().fold(body, |b, a| Rc::new(Term::Lam(a, b)))
     },
+    "let" <head:LetHead> ";" <body:Term> => {
+        let (arg, val) = head;
+        vars.pop();
+        Rc::new(Term::App(Rc::new(Term::Lam(arg, body)), val))
+    }
 }
 
 Arg: &'input str = {
     Name => {
         vars.push(<>);
         <>
+    },
+}
+LetHead: (&'input str, Rc<Term<'input>>) = {
+    <name:Name> ":=" <term:Term> => {
+        vars.push(name);
+        (name, term)
     },
 }

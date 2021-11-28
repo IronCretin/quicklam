@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::fmt::{self, Display};
 use std::rc::Rc;
 
@@ -45,7 +46,7 @@ impl Display for Term<'_> {
         use Position::*;
         fn go<'a>(
             t: &'a Term<'_>,
-            vars: &mut Vec<&'a str>,
+            vars: &mut Vec<Cow<'a, str>>,
             pos: Position,
             f: &mut fmt::Formatter<'_>,
         ) -> fmt::Result {
@@ -55,7 +56,7 @@ impl Display for Term<'_> {
             match t {
                 &Var(i) => {
                     if i < vars.len() {
-                        f.write_str(vars[vars.len() - 1 - i])?
+                        f.write_str(&vars[vars.len() - 1 - i])?
                     } else {
                         write!(f, "#{}", i)?
                     }
@@ -73,21 +74,21 @@ impl Display for Term<'_> {
                     }
                 }
                 Lam(x, b) => {
-                    if matches!(pos, Left) {
-                        f.write_str("(")?;
-                    }
                     if !matches!(pos, Body) {
+                        f.write_str("(")?;
                         f.write_str("λ")?;
                     } else {
                         f.write_str(" ")?;
                     }
-                    f.write_str(x)?;
-                    vars.push(*x);
+                    let mut name = Cow::Borrowed(*x);
+                    while vars.contains(&name) {
+                        name += "\'";
+                    }
+                    f.write_str(&name)?;
+                    vars.push(name);
                     go(b, vars, Body, f)?;
                     vars.pop();
-                    if matches!(pos, Left) {
-                        f.write_str(")")?;
-                    }
+                    f.write_str(")")?;
                 }
             }
             Ok(())

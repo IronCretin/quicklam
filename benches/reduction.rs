@@ -12,8 +12,8 @@ fn church(b: &mut Criterion) {
         })
     });
 
-    let exp = parse(r"(\f x. f (f (f (f x)))) (\f x. f (f (f (f x)))) S Z").unwrap();
-    b.bench_function("4^4", |b| {
+    let exp = parse(r"(\f x. (f (f (f x)))) (\f x. (f (f (f x)))) S Z").unwrap();
+    b.bench_function("3^3", |b| {
         b.iter(|| {
             let mut exp = exp.clone();
             exp.reduce_all();

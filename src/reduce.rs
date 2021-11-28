@@ -74,9 +74,7 @@ impl<'a> Term<'a> {
         }
     }
     pub fn reduce_all(self: &mut Rc<Self>) {
-        while self.reduce_step() {
-            // println!("{} \n==>", self);
-        }
+        while self.reduce_step() {}
     }
 }
 

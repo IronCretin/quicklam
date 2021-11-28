@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use ariadne::{Color, Label, Report, ReportKind, Source};
 use lalrpop_util::ParseError;
 use rustyline::{error::ReadlineError, Editor};
@@ -13,46 +15,69 @@ fn main() {
     let mut rl = Editor::<()>::new();
     // ignore error if no prev history
     let _ = rl.load_history(".history");
-    loop {
+    'repl: loop {
         match rl.readline(">>> ") {
-            Ok(line) => {
+            Ok(mut line) => {
                 if line.is_empty() {
                     continue;
                 }
                 rl.add_history_entry(line.as_str());
-                match parse(line.as_str()) {
-                    Ok(term) => {
-                        for t in term.reduce_iter() {
-                            println!("{}", t);
+                let term = loop {
+                    match parse(line.as_str()) {
+                        Ok(term) => {
+                            break term;
+                        }
+                        Err(ParseError::UnrecognizedEOF { .. }) => match rl.readline("... ") {
+                            Ok(l) => {
+                                rl.add_history_entry(l.as_str());
+                                line += &l;
+                            }
+                            Err(ReadlineError::Interrupted) => {
+                                println!("^C");
+                                continue 'repl;
+                            }
+                            Err(ReadlineError::Eof) => {
+                                println!("^D");
+                                break 'repl;
+                            }
+                            Err(err) => {
+                                println!("Error: {:?}", err);
+                                break 'repl;
+                            }
+                        },
+                        Err(e) => {
+                            let span = match e {
+                                ParseError::InvalidToken { location, .. } => location..location + 1,
+                                ParseError::UnrecognizedEOF { .. } => unreachable!(),
+                                ParseError::UnrecognizedToken {
+                                    token: (location, ..),
+                                    ..
+                                } => location..location + 1,
+                                ParseError::ExtraToken {
+                                    token: (start, _, end),
+                                    ..
+                                } => start..end,
+                                ParseError::User {
+                                    error: Error { start, end, .. },
+                                } => start..end,
+                            };
+                            Report::build(ReportKind::Error, (), 0)
+                                .with_message("Parse error")
+                                .with_label(
+                                    Label::new(span)
+                                        .with_message(e.to_string())
+                                        .with_color(Color::Red),
+                                )
+                                .finish()
+                                .eprint(Source::from(&line))
+                                .unwrap();
+                            continue 'repl;
                         }
                     }
-                    Err(e) => {
-                        let span = match e {
-                            ParseError::InvalidToken { location, .. } => location..location + 1,
-                            ParseError::UnrecognizedEOF { location, .. } => location..location + 1,
-                            ParseError::UnrecognizedToken {
-                                token: (location, ..),
-                                ..
-                            } => location..location + 1,
-                            ParseError::ExtraToken {
-                                token: (start, _, end),
-                                ..
-                            } => start..end,
-                            ParseError::User {
-                                error: Error { start, end, .. },
-                            } => start..end,
-                        };
-                        Report::build(ReportKind::Error, (), 0)
-                            .with_message("Parse error")
-                            .with_label(
-                                Label::new(span)
-                                    .with_message(e.to_string())
-                                    .with_color(Color::Red),
-                            )
-                            .finish()
-                            .eprint(Source::from(line))
-                            .unwrap();
-                    }
+                };
+                println!("{}", term);
+                for t in term.reduce_iter() {
+                    println!("==>\n{}", t);
                 }
             }
             Err(ReadlineError::Interrupted) => {
