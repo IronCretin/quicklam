@@ -8,16 +8,25 @@ use Term::*;
 pub enum Term<'a> {
     /// A variable. The number indicates the corresponding lambda abstraction.
     Var(usize),
+    /// An arbitrary free variable
+    Free(&'a str),
     /// Function application.
     App(Rc<Term<'a>>, Rc<Term<'a>>),
     /// A lambda abstraction. The name has no meaning except for printing.
     Lam(&'a str, Rc<Term<'a>>),
 }
 
+impl Default for Term<'_> {
+    fn default() -> Self {
+        Term::Var(0)
+    }
+}
+
 impl PartialEq for Term<'_> {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (Var(i), Var(j)) => i == j,
+            (Free(s), Free(t)) => s == t,
             (App(l1, r1), App(l2, r2)) => l1 == l2 && r1 == r2,
             (Lam(_, b1), Lam(_, b2)) => b1 == b2,
             _ => false,
@@ -51,6 +60,7 @@ impl Display for Term<'_> {
                         write!(f, "#{}", i)?
                     }
                 }
+                &Free(s) => f.write_str(s)?,
                 App(l, r) => {
                     if matches!(pos, Right) {
                         f.write_str("(")?;

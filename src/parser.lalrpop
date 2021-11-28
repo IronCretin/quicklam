@@ -20,7 +20,7 @@ pub Term: Rc<Term<'input>> = {
         .unwrap()
 }
 
-Name = r"[^\\λ.()#\s]";
+Name = r"[^\\λ.()#\s]+";
 
 /// Term that can appear in the left of an application expression.
 LTerm: Rc<Term<'input>> = {
@@ -35,20 +35,23 @@ LTerm: Rc<Term<'input>> = {
                 end,
             },
         }),
-    <start:@L> <name:Name> <end:@R> =>? vars
+    <start:@L> <name:Name> <end:@R> => vars
         .iter()
         .rev()
         .position(|&v| v == name)
         .map(|n| {
             Rc::new(Term::Var(n))
         })
-        .ok_or_else(|| ParseError::User {
-            error: Error {
-                start: start,
-                kind: ErrorKind::BadVar(name.to_string()),
-                end,
-            },
-        }),
+        .unwrap_or_else(|| {
+            Rc::new(Term::Free(name))
+        })
+        // .ok_or_else(|| ParseError::User {
+        //     error: Error {
+        //         start: start,
+        //         kind: ErrorKind::BadVar(name.to_string()),
+        //         end,
+        //     },
+        // }),
 }
 /// Term that can appear at the end of an application expression.
 RTerm: Rc<Term<'input>> = {

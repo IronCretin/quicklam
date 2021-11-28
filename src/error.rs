@@ -4,9 +4,9 @@ use std::num::ParseIntError;
 /// An error that occured during parsing
 #[derive(Debug, Clone)]
 pub struct Error {
-    pub(crate) start: usize,
-    pub(crate) kind: ErrorKind,
-    pub(crate) end: usize,
+    pub start: usize,
+    pub kind: ErrorKind,
+    pub end: usize,
 }
 impl Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -20,7 +20,7 @@ impl std::error::Error for Error {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) enum ErrorKind {
+pub enum ErrorKind {
     /// An error occured while parsing an integer
     BadNum(ParseIntError),
     /// An invalid variable name was encountered

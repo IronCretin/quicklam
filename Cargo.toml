@@ -3,10 +3,15 @@ name = "quicklam"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[[bench]]
+name = "reduction"
+harness = false
 
 [build-dependencies]
 lalrpop = "0.19.6"
+
+[dev-dependencies]
+criterion = "0.3"
 
 [dependencies]
 lalrpop-util = { version = "0.19.6", features = ["lexer"] }

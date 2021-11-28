@@ -1,18 +1,15 @@
-use std::rc::Rc;
-
 use ariadne::{Color, Label, Report, ReportKind, Source};
-use lalrpop_util::{lalrpop_mod, ParseError};
+use lalrpop_util::ParseError;
 use rustyline::{error::ReadlineError, Editor};
 
-use crate::error::Error;
-use crate::term::Term;
-
-pub mod error;
-pub mod term;
-
-lalrpop_mod!(pub parser);
+use quicklam::error::Error;
+use quicklam::parse;
 
 fn main() {
+    // let mut exp = parse(r"(\f x. f (f (f x))) (\f x. f (f (f x))) S Z").unwrap();
+    // exp.reduce_all();
+    // println!("{}", exp);
+
     let mut rl = Editor::<()>::new();
     // ignore error if no prev history
     let _ = rl.load_history(".history");
@@ -23,8 +20,12 @@ fn main() {
                     continue;
                 }
                 rl.add_history_entry(line.as_str());
-                match parser::TermParser::new().parse(&mut vec![], line.as_str()) {
-                    Ok(term) => println!("{}", term),
+                match parse(line.as_str()) {
+                    Ok(term) => {
+                        for t in term.reduce_iter() {
+                            println!("{}", t);
+                        }
+                    }
                     Err(e) => {
                         let span = match e {
                             ParseError::InvalidToken { location, .. } => location..location + 1,
